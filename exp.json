@@ -1,7 +1,7 @@
 {
-  "name": "game-template",
-  "description": "A starting point for making games on Exponent.",
-  "slug": "game-template",
+  "name": "in-the-depths",
+  "description": "A story about life in the belly of an aquarium",
+  "slug": "in-the-depths",
   "sdkVersion": "11.0.0",
   "version": "1.0.0",
   "orientation": "portrait",
