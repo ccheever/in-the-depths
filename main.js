@@ -1,6 +1,6 @@
 import Exponent from 'exponent';
 import React from 'react';
-import { Alert, PanResponder } from 'react-native';
+import { Alert, PanResponder, Text, View } from 'react-native';
 
 import Assets from './Assets';
 // import Game from './3DGame';
@@ -15,6 +15,11 @@ import Game from './2DGame';
 class App extends React.Component {
   state = {
     loaded: false,
+    score: 0,
+  }
+
+  _setScore = (score) => {
+    this.setState({score});
   }
 
   componentWillMount() {
@@ -31,6 +36,10 @@ class App extends React.Component {
       await Promise.all(Object.keys(Assets).map((name) =>
         Assets[name].downloadAsync()));
 
+      await Exponent.Font.loadAsync({
+        score: require('./Assets/score.ttf'),
+      });
+
       // We're good to go!
       this.setState({ loaded: true });
     } catch (e) {
@@ -38,9 +47,21 @@ class App extends React.Component {
     }
   }
 
+
   render() {
     return this.state.loaded ? (
-      <Game style={{ flex: 1 }} />
+      <View style={{flex: 1}}>
+        <Game style={{ flex: 1 }} setScore={this._setScore} />
+        <Text style={{
+            position: 'absolute',
+            top: 20,
+            left: 20,
+            fontSize: 40,
+            fontFamily: 'score',
+            color: 'white',
+            backgroundColor: 'transparent',
+          }}>{this.state.score}</Text>
+      </View>
     ) : (
       <Exponent.Components.AppLoading />
     );

@@ -9,7 +9,9 @@ const modules = {
   'player-sprite': require('./avatar2.png'),
   'aquarium': require('./Aquarium.png'),
   'shark': require('./Shark.png'),
-  'diver': require('./Diver.png'),
+  'diver': require('./ScubaDiver.png'),
+  'dubloon': require('./Dubloon.png'),
+  // 'score': require('./score.ttf'),
 }
 
 // Export map of asset names to `Exponent.Asset` objects.

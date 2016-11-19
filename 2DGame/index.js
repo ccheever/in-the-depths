@@ -24,7 +24,14 @@ import Assets from '../Assets';
 
 // Render the game as a `View` component.
 
-export default (viewProps) => {
+export default class Game extends React.Component {
+  shouldComponentUpdate() {
+    return false;
+  }
+  render() {
+
+  this.shouldComponentUpdate = () => { return false; };
+
   //// Camera
 
   // An orthographic projection from 3d to 2d can be viewed as simply dropping
@@ -48,6 +55,20 @@ export default (viewProps) => {
     1, 10000,
   );
   camera.position.z = 1000;
+
+  let translateWindowToGLCoordinates = ({x, y}) => {
+    let xp = (x / screenWidth);
+    let yp = (y / screenHeight);
+    let tx = xp * width;
+    let ty = yp * height;
+
+    return {
+      x: (tx - width / 2),
+      y: - (ty - height / 2),
+    };
+
+  };
+
 
 
   //// Scene, sprites
@@ -84,14 +105,14 @@ export default (viewProps) => {
   // material to draw itself. It can be translated and rotated as any other
   // scenegraph node.
   const mesh = new THREE.Mesh(geometry, material);
-  scene.add(mesh);
+  // scene.add(mesh);
 
   // Geometries and materials can be reused.
   const mesh2 = new THREE.Mesh(geometry, material);
   mesh2.position.x = mesh2.position.y = 0.5;
   mesh2.position.z = -40;     // This puts this sprite behind our previous one.
   mesh2.rotation.z = Math.PI;
-  scene.add(mesh2);
+  // scene.add(mesh2);
 
   const aquariumGeometry = new THREE.PlaneBufferGeometry(width, height);
   const aquariumTexture = THREEView.textureFromAsset(Assets['aquarium']);
@@ -111,8 +132,36 @@ export default (viewProps) => {
   aquariumMesh.rotation.z = Math.PI;
   scene.add(aquariumMesh);
 
-  const diverFactor = 3;
-  const diverGeometry = new THREE.PlaneBufferGeometry(3 / diverFactor, 2.2 / diverFactor);
+  const dubloonSize = 0.6;
+  const dubloonGeometry = new THREE.PlaneBufferGeometry(1 * dubloonSize, 1 * dubloonSize);
+  const dubloonTexture = THREEView.textureFromAsset(Assets['dubloon']);
+  dubloonTexture.minFilter = dubloonTexture.magFilter = THREE.NearestFilter;
+  dubloonTexture.needsUpdate = true;
+
+  const dubloonMaterial = new THREE.MeshBasicMaterial({
+    map: dubloonTexture,
+    color: '#ffcc00',
+    transparent: true,
+  });
+
+  const dubloonMesh = new THREE.Mesh(dubloonGeometry, dubloonMaterial);
+  dubloonMesh.position.x = 0;
+  dubloonMesh.position.y = 0;
+  dubloonMesh.position.z = -30;
+  dubloonMesh.rotation.z = Math.PI;
+  scene.add(dubloonMesh);
+
+  let randomlyPlaceDubloon = () => {
+    dubloonMesh.position.x = Math.random() * width - (width / 2);
+    dubloonMesh.position.y = Math.random() * height - (height / 2);
+  }
+  randomlyPlaceDubloon();
+
+  let score = 0;
+
+
+  const diverFactor = 2;
+  const diverGeometry = new THREE.PlaneBufferGeometry(1 / diverFactor, 2 / diverFactor);
   const diverTexture = THREEView.textureFromAsset(Assets['diver']);
   diverTexture.minFilter = diverTexture.magFilter = THREE.NearestFilter;
   diverTexture.needsUpdate = true;
@@ -126,9 +175,24 @@ export default (viewProps) => {
   const diverMesh = new THREE.Mesh(diverGeometry, diverMaterial);
   diverMesh.position.x = 0;
   diverMesh.position.y = -1.5;
-  diverMesh.position.z = -40;
+  diverMesh.position.z = -20;
   diverMesh.rotation.z = Math.PI;
   scene.add(diverMesh);
+
+  let target = {
+    on: true,
+    x: diverMesh.position.x,
+    y: diverMesh.position.y,
+    rotation: diverMesh.rotation.z,
+  };
+
+  let current = {
+    x: diverMesh.position.x,
+    y: diverMesh.position.y,
+    rotation: diverMesh.rotation.z,
+    speed: 0.01,
+  };
+
 
 
 
@@ -138,18 +202,94 @@ export default (viewProps) => {
   // This function is called every frame, with `dt` being the time in seconds
   // elapsed since the last call.
   const tick = (dt) => {
+
+    let ddx = Math.abs(current.x - dubloonMesh.position.x);
+    let ddy = Math.abs(current.y - dubloonMesh.position.y);
+    if ((ddx < dubloonSize) && (ddy < dubloonSize)) {
+      // WIN
+      score += 1;
+      this.props.setScore(score);
+      randomlyPlaceDubloon();
+    }
+
     mesh.rotation.z += 2 * dt;
+    let rd1 = target.rotation - current.rotation;
+    let rd2 = target.rotation + Math.PI * 2 - current.rotation;
+    let rd3 = target.rotation - Math.PI * 2 - current.rotation;
+    let rd = rd1;
+    if (Math.abs(rd2) < Math.abs(rd)) {
+      rd = rd2;
+    }
+    if (Math.abs(rd3) < Math.abs(rd)) {
+      rd = rd3;
+    }
+
+    if (Math.random() < 0.01) {
+      // console.log({rd, targetRotation: target.rotation, currentRotation: current.rotation,});
+    }
+    if (Math.abs(rd) > Math.PI) {
+      // console.log("Something is wrong-- ", {rd,});
+    }
+
+    // console.log({rd})  ;
+
+    // console.log({rd});
+    current.rotation += (rd / 20);
+
+    let dx = - Math.sin(current.rotation + Math.PI) * current.speed;
+    let dy = Math.cos(current.rotation + Math.PI) * current.speed;
+    current.x = current.x + dx;
+    current.y = current.y + dy;
+    diverMesh.position.x = current.x
+    diverMesh.position.y = current.y;
+    diverMesh.rotation.z = current.rotation;
+
   }
 
   // These functions are called on touch and release of the view respectively.
   const touch = (_, gesture) => {
+    // console.log("TOUCH:", {
+    //   gesture,
+    // });
     material.color.setHex(0x00ff00);
   };
   const release = (_, gesture) => {
+    // console.log("RELEASE:", {
+    //   gesture,
+    // });
+
     material.color.set('white');
 
     // material.color.setHex(0xff0000);
   }
+
+  const panMove = (_, gesture) => {
+    let {x, y} = translateWindowToGLCoordinates({
+      x: gesture.x0,
+      y: gesture.y0,
+    });
+
+    target.x = x;
+    target.y = y;
+
+    // compute angle
+    let tr = Math.atan2((target.x - current.x), (current.y - target.y));
+    if (tr < 0) {
+      tr += Math.PI * 2;
+    }
+    if (tr > Math.PI * 2) {
+      tr -= Math.PI * 2;
+    }
+    target.rotation = tr;
+
+
+    // diverMesh.position.x = x;
+    // diverMesh.position.y = y;
+    // console.log("MOVE:", {
+    //   gesture, x, y,
+    // });
+
+  };
 
 
   //// React component
@@ -162,15 +302,17 @@ export default (viewProps) => {
     onPanResponderGrant: touch,
     onPanResponderRelease: release,
     onPanResponderTerminate: release,
+    onPanResponderMove: panMove,
     onShouldBlockNativeResponder: () => false,
   });
   return (
       <THREEView
-        {...viewProps}
+        {...this.props}
         {...panResponder.panHandlers}
         scene={scene}
         camera={camera}
         tick={tick}
       />
   );
-};
+}
+}
